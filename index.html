@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="이카운트 ERP 연동 GCP 데이터 파이프라인 및 AI 업무 자동화 시스템 구축 — 프로젝트 제안서" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['SUIT Variable', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              600: '#0284c7',
+              700: '#0369a1'
+            }
+          },
+          boxShadow: {
+            soft: '0 10px 30px -18px rgba(15, 23, 42, 0.35)'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root { color-scheme: light; font-size: 16px; }
+    body {
+      font-family: 'SUIT Variable', sans-serif;
+      font-size: 1rem;
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(14, 165, 233, 0.08), transparent 42%),
+        radial-gradient(circle at 88% 82%, rgba(2, 132, 199, 0.06), transparent 48%);
+    }
+
+    .doc-content h1, .doc-content h2, .doc-content h3, .doc-content h4 {
+      color: rgb(15 23 42); font-weight: 700; letter-spacing: -0.01em;
+      line-height: 1.3; margin-top: 1.6em; margin-bottom: 0.7em;
+    }
+    .doc-content h1 { font-size: 2rem; margin-top: 0.2em; }
+    .doc-content h2 { font-size: 1.4rem; }
+    .doc-content h3 { font-size: 1.15rem; }
+    .doc-content p, .doc-content li {
+      color: rgb(51 65 85); line-height: 1.8; font-size: 1rem;
+    }
+    .doc-content p, .doc-content ul, .doc-content ol,
+    .doc-content table, .doc-content pre, .doc-content blockquote {
+      margin-bottom: 1rem;
+    }
+    .doc-content ul, .doc-content ol { padding-left: 1.2rem; }
+    .doc-content ul { list-style: disc; }
+    .doc-content ol { list-style: decimal; }
+    .doc-content table {
+      width: 100%; border-collapse: collapse;
+      border: 1px solid rgb(226 232 240); border-radius: 0.75rem;
+      overflow: hidden; font-size: 1rem;
+    }
+    .doc-content th, .doc-content td {
+      border: 1px solid rgb(226 232 240); padding: 0.7rem 0.8rem;
+      text-align: left; vertical-align: top;
+    }
+    .doc-content th {
+      background: rgb(248 250 252); color: rgb(30 41 59); font-weight: 600;
+    }
+    .doc-content pre, .doc-content code {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    }
+    .doc-content pre {
+      background: rgb(15 23 42); color: rgb(226 232 240);
+      padding: 1rem; border-radius: 0.75rem; overflow-x: auto;
+      font-size: 1rem; line-height: 1.65;
+    }
+    .doc-content p code, .doc-content li code,
+    .doc-content td code, .doc-content th code {
+      background: rgb(241 245 249); color: rgb(15 23 42);
+      border: 1px solid rgb(226 232 240); border-radius: 0.4rem;
+      padding: 0.08rem 0.4rem; font-size: 1em;
+    }
+    .doc-content blockquote {
+      border-left: 3px solid rgb(14 165 233); padding-left: 0.85rem;
+      color: rgb(71 85 105); background: rgb(240 249 255);
+      border-radius: 0.5rem; padding-top: 0.55rem; padding-bottom: 0.55rem;
+    }
+
+    .text-xs { font-size: 1rem !important; }
+
+    .timeline { position: relative; padding-left: 2rem; }
+    .timeline::before {
+      content: ''; position: absolute; left: 0.6rem; top: 0.25rem; bottom: 0.25rem;
+      width: 2px; background: rgb(186 230 253);
+    }
+    .timeline-item { position: relative; margin-bottom: 1.75rem; }
+    .timeline-item::before {
+      content: ''; position: absolute; left: -1.65rem; top: 0.35rem;
+      width: 0.75rem; height: 0.75rem; border-radius: 50%;
+      background: rgb(2 132 199); border: 3px solid rgb(224 242 254);
+    }
+
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    #sidebar-backdrop { display: none; }
+    #sidebar-backdrop.open { display: block; }
+    @media (max-width: 1023px) {
+      #sidebar { transform: translateX(-100%); transition: transform 0.2s ease; position: fixed; top: 0; left: 0; z-index: 40; height: 100vh; width: 80vw; max-width: 320px; }
+      #sidebar.open { transform: translateX(0); }
+    }
+  </style>
+  <title>이카운트 ERP 연동 GCP 데이터 파이프라인 및 AI 업무 자동화 — 프로젝트 제안서</title>
+</head>
+<body class="text-slate-800 font-sans antialiased">
+  <div class="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-10">
+
+    <!-- Header -->
+    <header class="mb-6 rounded-2xl border border-slate-200/70 bg-white/85 px-5 py-3 shadow-soft backdrop-blur">
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="sidebar-toggle" class="lg:hidden inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-medium text-slate-700 hover:border-sky-300 hover:text-sky-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          메뉴
+        </button>
+        <a href="#home" class="inline-flex items-center shrink-0 text-sm font-bold tracking-tight text-slate-800">
+          프로젝트 제안서
+        </a>
+        <div class="hidden sm:block ml-auto text-right">
+          <p class="text-sm font-semibold tracking-[0.04em] text-sky-700/90">이카운트 ERP 연동 GCP 파이프라인 & AI 자동화</p>
+          <p class="text-xs text-slate-400">프로젝트 제안서</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+
+      <!-- Sidebar -->
+      <div id="sidebar-backdrop" class="fixed inset-0 bg-black/30 z-30 lg:hidden" onclick="closeSidebar()"></div>
+      <aside id="sidebar" class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-soft backdrop-blur lg:sticky lg:top-6 lg:h-[calc(100vh-4rem)] lg:overflow-auto">
+        <nav id="nav" class="space-y-1">
+          <a href="#home" data-page="home" class="nav-link block rounded-xl border px-3 py-2 text-sm border-sky-200 bg-sky-50 font-medium text-sky-700">홈</a>
+          <div class="my-3 border-t border-slate-200"></div>
+          <p class="mb-2 mt-1 px-1 text-sm font-semibold tracking-[0.14em] text-slate-400">제안서</p>
+          <a href="#overview" data-page="overview" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">프로젝트 소개</a>
+          <a href="#estimate" data-page="estimate" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">견적서</a>
+          <a href="#manday" data-page="manday" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">공수계산서</a>
+          <a href="#prd" data-page="prd" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">PRD</a>
+          <div class="my-3 border-t border-slate-200"></div>
+          <p class="mb-2 mt-1 px-1 text-sm font-semibold tracking-[0.14em] text-slate-400">일정 & 경험</p>
+          <a href="#timeline" data-page="timeline" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">일정 제안</a>
+          <a href="#portfolio" data-page="portfolio" class="nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900">유사 프로젝트 경험</a>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="min-w-0">
+
+        <!-- PAGE: Home -->
+        <div id="page-home" class="page-section active space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-6 shadow-soft backdrop-blur md:p-8">
+            <p class="mb-2 text-xs font-semibold tracking-[0.2em] text-sky-700/80">프로젝트 제안서</p>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">이카운트 ERP 연동 GCP 데이터 파이프라인 및 AI 업무 자동화 시스템 구축</h1>
+            <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">이카운트 ERP 데이터를 GCP BigQuery로 실시간 이관하고, Gemini AI 기반 무역 서류 자동 생성, AppSheet 현장 입출고 앱, Looker Studio 경영 대시보드를 통합 구축하여 서류 작성 시간 40% 단축, 주간 보고서 10분 이내 생성을 달성하는 1단계 업무 자동화 시스템을 제안합니다.</p>
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <span class="inline-flex rounded-full border border-sky-200 bg-sky-100 px-2.5 py-1 text-sm font-semibold tracking-[0.12em] text-sky-700">3,600만원 (VAT 별도)</span>
+              <span class="inline-flex rounded-full border border-sky-200 bg-sky-100 px-2.5 py-1 text-sm font-semibold tracking-[0.12em] text-sky-700">90일</span>
+              <span class="inline-flex rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-sm font-semibold tracking-[0.12em] text-amber-700">GCP / AI 자동화 / ERP 연동</span>
+              <a href="https://www.wishket.com/project/153473/" target="_blank" rel="noopener noreferrer"
+                 class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-sm font-medium text-slate-500 transition hover:border-sky-300 hover:text-sky-700">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                원본 공고
+              </a>
+            </div>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <a href="#overview" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">소개</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">프로젝트 소개</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">이카운트 ERP 연동 분석, 핵심 요구사항 정리, 제안 포인트</p>
+            </a>
+            <a href="#estimate" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">비용</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">견적서</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">5개 과업 영역별 비용 산출 근거 및 상세 견적</p>
+            </a>
+            <a href="#manday" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">공수</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">공수계산서</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">기능별 개발 공수(man-day) 산출 내역 — 총 55 M/D</p>
+            </a>
+            <a href="#prd" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-amber-100 text-amber-700 border-amber-200">기획</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">PRD</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">4종 사용자, 5개 기능 모듈 요구사항 정의서</p>
+            </a>
+            <a href="#timeline" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-amber-100 text-amber-700 border-amber-200">일정</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">일정 제안</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">4단계 마일스톤 및 산출물 일정표 (90일)</p>
+            </a>
+            <a href="#portfolio" class="group rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-amber-100 text-amber-700 border-amber-200">경험</div>
+              <h2 class="text-lg font-semibold tracking-tight text-slate-900 group-hover:text-sky-700">유사 프로젝트 경험</h2>
+              <p class="mt-2 text-sm leading-7 text-slate-600">AI 보고서 생성, B2B 데이터 관리, 멀티플랫폼 시스템 경험</p>
+            </a>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">10+</p>
+              <p class="text-xs text-slate-500">완료 프로젝트</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">5+</p>
+              <p class="text-xs text-slate-500">AI/데이터 프로젝트</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">90일</p>
+              <p class="text-xs text-slate-500">제안 기간</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">3,600만</p>
+              <p class="text-xs text-slate-500">제안 금액</p>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-sky-200/70 bg-gradient-to-br from-sky-50 to-brand-50 p-6 text-center shadow-soft md:p-10">
+            <h2 class="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">함께 만들어 가겠습니다</h2>
+            <p class="mx-auto mt-3 max-w-lg text-sm leading-7 text-slate-600">각 메뉴를 클릭하시면 상세 내용을 확인하실 수 있습니다.</p>
+          </div>
+        </div>
+
+        <!-- PAGE: Overview -->
+        <div id="page-overview" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>프로젝트 소개</h1>
+              <blockquote>이카운트 ERP 데이터를 GCP BigQuery로 실시간 이관하고, Gemini AI 기반 무역 서류 자동 생성, AppSheet 현장 입출고 앱, Looker Studio 경영 대시보드를 통합 구축하여 1단계 업무 자동화를 달성합니다.</blockquote>
+
+              <h2>프로젝트 개요</h2>
+              <table>
+                <tr><th>항목</th><th>내용</th></tr>
+                <tr><td>프로젝트명</td><td><a href="https://www.wishket.com/project/153473/" target="_blank" rel="noopener noreferrer" class="text-sky-700 underline decoration-sky-300 hover:decoration-sky-500">이카운트 ERP 연동 GCP 데이터 파이프라인 및 AI 업무 자동화 시스템 구축</a></td></tr>
+                <tr><td>카테고리</td><td>GCP 클라우드 / AI 자동화 / ERP 연동 / 데이터 파이프라인</td></tr>
+                <tr><td>제안 금액</td><td>3,600만원 (VAT 별도)</td></tr>
+                <tr><td>제안 기간</td><td>90일</td></tr>
+                <tr><td>핵심 기술</td><td>GCP (BigQuery, Cloud Functions), Gemini AI API, AppSheet, Looker Studio, Python, 이카운트 ERP Open API</td></tr>
+              </table>
+
+              <h2>핵심 요구사항 분석</h2>
+              <ul>
+                <li><strong>이카운트 ERP Open API 실시간 연동</strong> — 수출입, 재고, 회계 데이터를 배치/실시간 방식으로 BigQuery에 적재하고, API 호출 제한(Rate Limit)을 고려한 스케줄링 구현</li>
+                <li><strong>GCP BigQuery 데이터 웨어하우스</strong> — 스키마 최적화, Google Sheets 양방향 동기화, 에러 모니터링 및 알림 시스템</li>
+                <li><strong>Gemini AI 무역 서류 자동 생성</strong> — Invoice, Packing List 초안 자동 생성, 다국어 번역, 국가별 양식 템플릿 관리, Google Docs/PDF 변환</li>
+                <li><strong>AppSheet 현장 입출고 앱</strong> — 바코드 스캔/등록, BigQuery 및 ERP 실시간 연동, 별도 교육 없이 사용 가능한 직관적 UI</li>
+                <li><strong>Looker Studio 경영 대시보드</strong> — 매출/재고/수출입 현황 시각화, 주간/월간 보고서 자동 생성 및 이메일 발송, 부서별 접근 권한 제어</li>
+              </ul>
+
+              <h2>제안 포인트</h2>
+              <p>본 프로젝트는 Google Cloud 생태계(BigQuery, Cloud Functions, AppSheet, Looker Studio, Gemini AI)를 중심으로 구축되어, 각 서비스 간 네이티브 연동이 핵심입니다. 다음과 같은 접근으로 프로젝트를 수행합니다:</p>
+              <ul>
+                <li><strong>ERP API 연동 안정성 확보</strong> — 이카운트 ERP Open API의 인증 토큰 관리, Rate Limit 대응, 실패 시 자동 재시도 로직을 우선 구축하여 데이터 파이프라인의 안정성을 확보합니다.</li>
+                <li><strong>Google 생태계 네이티브 통합</strong> — BigQuery를 허브로 AppSheet, Looker Studio, Google Sheets가 유기적으로 연결되는 아키텍처를 설계합니다.</li>
+                <li><strong>AI 서류 생성 품질 관리</strong> — Gemini AI가 생성한 무역 서류 초안을 담당자가 검토·수정할 수 있는 워크플로우를 구성하여, AI 자동화와 사람의 검증을 균형 있게 배치합니다.</li>
+                <li><strong>단계별 마일스톤</strong> — 1개월 내 ERP 데이터 연동, 2개월 차 AppSheet/대시보드 시연, 3개월 내 최종 오픈이라는 클라이언트 일정에 맞춘 단계별 납품을 진행합니다.</li>
+              </ul>
+
+              <h2>사용 기술 및 툴</h2>
+              <h3>개발 기술</h3>
+              <div class="flex flex-wrap gap-2 not-prose mb-4">
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">GCP BigQuery</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Cloud Functions</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Gemini AI API</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">AppSheet</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Looker Studio</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Python</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Node.js</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">이카운트 ERP Open API</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Google Workspace</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Google Sheets API</span>
+                <span class="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">Cloud Scheduler</span>
+              </div>
+              <h3>협업 및 커뮤니케이션</h3>
+              <div class="flex flex-wrap gap-2 not-prose">
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">Slack / 카카오톡</span>
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">Zoom / Google Meet</span>
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">Notion / Google Docs</span>
+                <span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">GitHub</span>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <!-- PAGE: Estimate -->
+        <div id="page-estimate" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>견적서</h1>
+              <blockquote>본 견적서는 프로젝트 요구사항 분석을 기반으로 산출되었습니다.</blockquote>
+
+              <h2>견적 요약</h2>
+              <table>
+                <tr><th>항목</th><th>내용</th></tr>
+                <tr><td>프로젝트명</td><td>이카운트 ERP 연동 GCP 데이터 파이프라인 및 AI 업무 자동화 시스템 구축</td></tr>
+                <tr><td>제안 금액</td><td><strong>36,000,000원 (VAT 별도)</strong></td></tr>
+                <tr><td>제안 기간</td><td>90일</td></tr>
+                <tr><td>견적 유효기간</td><td>제안일로부터 30일</td></tr>
+              </table>
+
+              <h2>상세 견적 내역</h2>
+              <table>
+                <thead>
+                  <tr><th>구분</th><th>항목</th><th>수량</th><th>단가</th><th>금액</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>기획/설계</td><td>시스템 아키텍처, 데이터 모델링, 서류 양식 분석</td><td>5 M/D</td><td>660,000</td><td>3,300,000</td></tr>
+                  <tr><td>데이터 파이프라인</td><td>이카운트 ERP API 연동, BigQuery DW 구축, Sheets 동기화, 모니터링</td><td>16 M/D</td><td>656,250</td><td>10,500,000</td></tr>
+                  <tr><td>AI 서류 자동화</td><td>Gemini AI 연동, Invoice/PL 자동 생성, 다국어 템플릿, PDF 변환</td><td>14 M/D</td><td>657,143</td><td>9,200,000</td></tr>
+                  <tr><td>AppSheet 앱</td><td>현장 입출고 모바일 앱, 스캔/등록, ERP 실시간 연동</td><td>8 M/D</td><td>650,000</td><td>5,200,000</td></tr>
+                  <tr><td>Looker Studio</td><td>경영 대시보드, 보고서 자동화, 권한 제어, 데이터 보안</td><td>7 M/D</td><td>657,143</td><td>4,600,000</td></tr>
+                  <tr><td>QA/배포</td><td>통합 테스트, 배포, 운영 매뉴얼 작성</td><td>5 M/D</td><td>640,000</td><td>3,200,000</td></tr>
+                </tbody>
+                <tfoot>
+                  <tr><th colspan="4">합계 (VAT 별도)</th><th>36,000,000원</th></tr>
+                </tfoot>
+              </table>
+
+              <h2>산정 근거</h2>
+              <ul>
+                <li>이카운트 ERP Open API 연동 — 인증 토큰 관리, 수출입/재고/회계 데이터 추출, Rate Limit 대응 등 외부 API 연동 복잡도 반영</li>
+                <li>GCP BigQuery 기반 데이터 웨어하우스 — 스키마 설계, 배치/실시간 파이프라인, Google Sheets 양방향 동기화</li>
+                <li>Gemini AI 무역 서류 자동 생성 — 프롬프트 엔지니어링, 다국어 대응, 국가별 양식, Google Docs/PDF 변환 파이프라인</li>
+                <li>AppSheet 노코드 기반이나 BigQuery/ERP 연동 커스터마이징 공수 포함</li>
+                <li>유사 프로젝트(AI 보고서 자동 생성, B2B 데이터 관리 시스템) 수행 경험 기반 효율적 산정</li>
+              </ul>
+
+              <h2>포함 사항</h2>
+              <ul>
+                <li>소스 코드 전체 이관 (Cloud Functions, 데이터 파이프라인 스크립트)</li>
+                <li>개발 문서 (API 연동 명세서, 데이터 파이프라인 구성도, 시스템 아키텍처 설계서)</li>
+                <li>AppSheet 및 Looker Studio 관리자 운영 매뉴얼</li>
+                <li>1개월 무상 하자 보수</li>
+                <li>GCP 환경 세팅 (1회)</li>
+              </ul>
+
+              <h2>불포함 사항</h2>
+              <ul>
+                <li>GCP 클라우드 인프라 사용 비용 (BigQuery, Cloud Functions 등)</li>
+                <li>Gemini AI API 호출 비용</li>
+                <li>이카운트 ERP 라이선스 및 API 사용 비용</li>
+                <li>Google Workspace 라이선스 비용</li>
+                <li>하자 보수 기간 이후 유지보수</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+
+        <!-- PAGE: Man-day -->
+        <div id="page-manday" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>공수계산서</h1>
+              <blockquote>기능별 개발 공수(Man-Day)를 산출하여 일정과 비용의 근거를 제시합니다.</blockquote>
+
+              <h2>공수 요약</h2>
+              <table>
+                <tr><th>구분</th><th>공수 (M/D)</th><th>비율</th></tr>
+                <tr><td>기획/설계</td><td>5 M/D</td><td>9%</td></tr>
+                <tr><td>데이터 파이프라인 (ERP → BigQuery)</td><td>16 M/D</td><td>29%</td></tr>
+                <tr><td>AI 서류 자동화 (Gemini AI)</td><td>14 M/D</td><td>26%</td></tr>
+                <tr><td>AppSheet 입출고 앱</td><td>8 M/D</td><td>15%</td></tr>
+                <tr><td>Looker Studio 대시보드</td><td>7 M/D</td><td>13%</td></tr>
+                <tr><td>QA/배포/문서화</td><td>5 M/D</td><td>9%</td></tr>
+                <tr><th>합계</th><th>55 M/D</th><th>100%</th></tr>
+              </table>
+
+              <h2>기능별 상세 공수</h2>
+              <table>
+                <thead>
+                  <tr><th>기능</th><th>세부 작업</th><th>담당</th><th>공수 (M/D)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td rowspan="2">기획/설계</td><td>시스템 아키텍처 설계, 데이터 모델링</td><td>기획</td><td>3</td></tr>
+                  <tr><td>무역 서류 양식 분석, 템플릿 설계</td><td>기획</td><td>2</td></tr>
+
+                  <tr><td rowspan="5">ERP 데이터 파이프라인</td><td>이카운트 ERP Open API 인증/토큰 관리</td><td>백엔드</td><td>3</td></tr>
+                  <tr><td>수출입/재고/회계 데이터 추출 및 정제</td><td>백엔드</td><td>5</td></tr>
+                  <tr><td>BigQuery DW 적재 및 스키마 최적화</td><td>백엔드</td><td>3</td></tr>
+                  <tr><td>BigQuery ↔ Google Sheets 양방향 동기화</td><td>백엔드</td><td>3</td></tr>
+                  <tr><td>에러 모니터링 및 알림 시스템</td><td>DevOps</td><td>2</td></tr>
+
+                  <tr><td rowspan="5">AI 서류 자동화</td><td>Gemini AI API 연동 및 프롬프트 엔지니어링</td><td>백엔드</td><td>3</td></tr>
+                  <tr><td>Invoice/Packing List 자동 생성 로직</td><td>백엔드</td><td>4</td></tr>
+                  <tr><td>필수 항목 자동 매핑 (수발주 데이터 기반)</td><td>백엔드</td><td>2</td></tr>
+                  <tr><td>Google Docs/PDF 변환 및 Drive 자동 저장</td><td>백엔드</td><td>2</td></tr>
+                  <tr><td>다국어 번역 지원 및 국가별 양식 관리</td><td>백엔드</td><td>3</td></tr>
+
+                  <tr><td rowspan="2">AppSheet 입출고 앱</td><td>현장 입출고 스캔/등록 앱 설계 및 개발</td><td>프론트엔드</td><td>5</td></tr>
+                  <tr><td>BigQuery/이카운트 ERP 실시간 연동</td><td>백엔드</td><td>3</td></tr>
+
+                  <tr><td rowspan="3">Looker Studio 대시보드</td><td>전사 경영 지표 시각화 대시보드 구축</td><td>프론트엔드</td><td>3</td></tr>
+                  <tr><td>주간/월간 보고서 자동 생성 및 이메일 발송</td><td>백엔드</td><td>2</td></tr>
+                  <tr><td>부서별/직급별 권한 제어 및 보안 설정</td><td>백엔드</td><td>2</td></tr>
+
+                  <tr><td rowspan="3">QA/배포/문서화</td><td>통합 테스트 (파이프라인, AI, 앱, 대시보드)</td><td>QA</td><td>2</td></tr>
+                  <tr><td>GCP 배포 및 환경 설정</td><td>DevOps</td><td>2</td></tr>
+                  <tr><td>운영 매뉴얼 및 API 명세서 작성</td><td>기획</td><td>1</td></tr>
+                </tbody>
+              </table>
+
+              <h2>산정 기준</h2>
+              <ul>
+                <li>1 M/D = 8시간 기준 (1인 1일 작업량)</li>
+                <li>주 5일 근무 기준</li>
+                <li>버퍼 10~15% 포함</li>
+                <li>유사 프로젝트 수행 경험 기반 효율적 개발</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+
+        <!-- PAGE: PRD -->
+        <div id="page-prd" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>PRD (Product Requirements Document)</h1>
+              <blockquote>프로젝트 요구사항을 정의하고 기능 범위를 명확히 합니다.</blockquote>
+
+              <h2>1. 프로젝트 배경 및 목적</h2>
+              <p>50명 규모의 중소 무역회사에서 이카운트 ERP를 사용 중이나, ERP 데이터의 활용이 수작업에 의존하고 있습니다. 무역 서류(Invoice, Packing List) 작성, 입출고 관리, 경영 현황 파악 등의 업무를 자동화하여 다음 목표를 달성합니다:</p>
+              <ul>
+                <li>직원 AI 활용률 50% 이상 달성</li>
+                <li>서류 작성 시간 40% 단축</li>
+                <li>주간 보고서 작성 시간 8시간 → 10분 이내 단축</li>
+              </ul>
+
+              <h2>2. 사용자 정의</h2>
+              <table>
+                <thead>
+                  <tr><th>사용자 유형</th><th>설명</th><th>주요 기능</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>시스템 관리자</td><td>전체 시스템 설정 및 권한 관리</td><td>GCP 설정, 사용자 권한 제어, 데이터 보안 설정</td></tr>
+                  <tr><td>무역팀 담당자</td><td>무역 서류 생성 및 수출입 데이터 관리</td><td>AI 서류 자동 생성, 서류 검토/수정, 원클릭 발행</td></tr>
+                  <tr><td>현장 작업자</td><td>창고/물류 현장 입출고 담당</td><td>AppSheet 바코드 스캔, 입출고 등록, 재고 확인</td></tr>
+                  <tr><td>경영진/PM</td><td>경영 현황 파악 및 의사결정</td><td>Looker Studio 대시보드, 주간/월간 보고서 조회</td></tr>
+                </tbody>
+              </table>
+
+              <h2>3. 기능 요구사항</h2>
+
+              <h3>3.1 이카운트 ERP 실시간 데이터 파이프라인</h3>
+              <ul>
+                <li><strong>[필수]</strong> 이카운트 ERP Open API 연동 및 인증 토큰 관리</li>
+                <li><strong>[필수]</strong> 수출입, 재고, 회계 데이터 실시간/배치 추출 및 정제</li>
+                <li><strong>[필수]</strong> Google BigQuery 데이터 웨어하우스 적재 및 스키마 최적화</li>
+                <li><strong>[필수]</strong> BigQuery ↔ Google Sheets 양방향 실시간 데이터 동기화</li>
+                <li><strong>[필수]</strong> API 호출 실패/데이터 누락 방지를 위한 에러 모니터링 및 알림</li>
+              </ul>
+
+              <h3>3.2 무역 서류 AI 자동 생성</h3>
+              <ul>
+                <li><strong>[필수]</strong> Gemini AI 연동 무역 서류(Invoice, Packing List) 초안 자동 생성</li>
+                <li><strong>[필수]</strong> ERP 수발주 데이터 기반 필수 항목 자동 매핑 및 기입</li>
+                <li><strong>[필수]</strong> Google Docs/PDF 자동 변환 및 Google Drive 폴더 분류 저장</li>
+                <li><strong>[필수]</strong> 다국어 번역 지원 및 국가별 무역 서류 양식 템플릿 관리</li>
+                <li><strong>[필수]</strong> 원클릭 서류 발행 UI (Google Sheets/AppSheet 연동)</li>
+              </ul>
+
+              <h3>3.3 AppSheet 현장 입출고 앱</h3>
+              <ul>
+                <li><strong>[필수]</strong> AppSheet 기반 현장 작업자용 모바일 입출고 스캔/등록</li>
+                <li><strong>[필수]</strong> 모바일 앱 입력 데이터의 BigQuery 및 이카운트 ERP 실시간 업데이트</li>
+                <li><strong>[필수]</strong> 별도 교육 없이 즉시 사용 가능한 직관적 UI</li>
+              </ul>
+
+              <h3>3.4 Looker Studio 경영 대시보드</h3>
+              <ul>
+                <li><strong>[필수]</strong> 전사 경영 지표(매출, 재고, 수출입 현황) 시각화 대시보드</li>
+                <li><strong>[필수]</strong> 주간/월간 경영 보고서 자동 생성 및 이메일 정기 발송</li>
+                <li><strong>[필수]</strong> 부서별/직급별 대시보드 접근 권한 제어</li>
+              </ul>
+
+              <h3>3.5 시스템 관리</h3>
+              <ul>
+                <li><strong>[필수]</strong> 데이터 보안 설정 및 접근 권한 관리</li>
+                <li><strong>[선택]</strong> 사용자 활동 로그 및 감사 추적</li>
+              </ul>
+
+              <h2>4. 비기능 요구사항</h2>
+              <table>
+                <thead>
+                  <tr><th>항목</th><th>요구사항</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>성능</td><td>이카운트 API 호출 제한(Rate Limit)을 고려한 최적화된 배치/실시간 동기화 스케줄링</td></tr>
+                  <tr><td>사용성</td><td>현장 작업자가 별도 교육 없이 즉시 사용 가능한 직관적 AppSheet UI</td></tr>
+                  <tr><td>안정성</td><td>데이터 파이프라인 장애 시 자동 알림 및 재시도 메커니즘</td></tr>
+                  <tr><td>보안</td><td>GCP IAM 기반 접근 제어, 데이터 암호화, 부서별 권한 분리</td></tr>
+                  <tr><td>확장성</td><td>2단계 타 부서(회계, 경영지원) 확장을 고려한 모듈식 아키텍처</td></tr>
+                </tbody>
+              </table>
+
+              <h2>5. 기술 제약사항</h2>
+              <ul>
+                <li>클라우드 인프라는 Google Cloud Platform(GCP) 지정</li>
+                <li>AI는 Google Gemini AI API 사용</li>
+                <li>모바일 앱은 AppSheet 기반 (커스텀 네이티브 앱 아님)</li>
+                <li>대시보드는 Looker Studio 기반 (커스텀 BI 아님)</li>
+                <li>이카운트 ERP Open API 제공 범위 내에서 데이터 연동</li>
+                <li>커스텀 UI/UX 디자인 불필요 — AppSheet/Looker Studio 기본 템플릿 활용</li>
+              </ul>
+
+              <h2>6. 범위 외 사항 (Out of Scope)</h2>
+              <ul>
+                <li>이카운트 ERP 자체 기능 커스터마이징</li>
+                <li>ERP 데이터 마이그레이션 (기존 데이터 이전)</li>
+                <li>커스텀 모바일 네이티브 앱 개발</li>
+                <li>2단계 타 부서 확장 기능</li>
+                <li>GCP 인프라 비용 최적화 컨설팅</li>
+                <li>사내 네트워크/보안 인프라 구축</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+
+        <!-- PAGE: Timeline -->
+        <div id="page-timeline" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>일정 제안</h1>
+              <blockquote>총 90일 기준 4단계 마일스톤 및 산출물을 제안합니다.</blockquote>
+
+              <h2>전체 일정 요약</h2>
+              <table>
+                <thead>
+                  <tr><th>단계</th><th>기간</th><th>주요 산출물</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Phase 1: 기획/설계 + ERP 연동</td><td>Day 1–30</td><td>시스템 아키텍처 설계서, 데이터 파이프라인 구성도, ERP 연동 완료</td></tr>
+                  <tr><td>Phase 2: AI 서류 자동화 + AppSheet 앱</td><td>Day 31–60</td><td>Gemini AI 서류 생성 모듈, AppSheet 입출고 앱 베타</td></tr>
+                  <tr><td>Phase 3: 대시보드 + 통합</td><td>Day 61–80</td><td>Looker Studio 대시보드, 보고서 자동화, AppSheet/대시보드 시연</td></tr>
+                  <tr><td>Phase 4: QA/배포/문서화</td><td>Day 81–90</td><td>통합 테스트 완료, 운영 매뉴얼, 최종 오픈</td></tr>
+                </tbody>
+              </table>
+            </article>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <h2 class="mb-4 text-sm font-semibold tracking-[0.14em] text-slate-500">상세 타임라인</h2>
+            <div class="timeline">
+              <div class="timeline-item">
+                <p class="text-sm font-semibold tracking-[0.14em] text-sky-700">PHASE 1</p>
+                <h4 class="text-base font-semibold text-slate-900">기획/설계 + ERP 데이터 연동</h4>
+                <p class="mb-1 text-sm font-semibold text-amber-600">Day 1–30 (30일)</p>
+                <p class="text-sm leading-7 text-slate-600">시스템 아키텍처 설계, 이카운트 ERP Open API 연동, BigQuery 데이터 웨어하우스 구축, 데이터 파이프라인 안정화</p>
+                <ul class="mt-2 list-disc pl-5 text-sm text-slate-500">
+                  <li>산출물: 시스템 아키텍처 설계서, 데이터 파이프라인 구성도, API 연동 명세서</li>
+                  <li>마일스톤: 이카운트 데이터 → BigQuery 실시간 동기화 확인</li>
+                </ul>
+              </div>
+              <div class="timeline-item">
+                <p class="text-sm font-semibold tracking-[0.14em] text-sky-700">PHASE 2</p>
+                <h4 class="text-base font-semibold text-slate-900">AI 서류 자동화 + AppSheet 입출고 앱</h4>
+                <p class="mb-1 text-sm font-semibold text-amber-600">Day 31–60 (30일)</p>
+                <p class="text-sm leading-7 text-slate-600">Gemini AI 연동 무역 서류 자동 생성, AppSheet 기반 현장 입출고 모바일 앱 개발, Google Docs/PDF 변환 파이프라인</p>
+                <ul class="mt-2 list-disc pl-5 text-sm text-slate-500">
+                  <li>산출물: AI 서류 생성 모듈, 다국어 템플릿, AppSheet 앱 베타</li>
+                  <li>마일스톤: Invoice/PL AI 자동 생성 데모, AppSheet 입출고 등록 테스트</li>
+                </ul>
+              </div>
+              <div class="timeline-item">
+                <p class="text-sm font-semibold tracking-[0.14em] text-sky-700">PHASE 3</p>
+                <h4 class="text-base font-semibold text-slate-900">경영 대시보드 + 통합 연동</h4>
+                <p class="mb-1 text-sm font-semibold text-amber-600">Day 61–80 (20일)</p>
+                <p class="text-sm leading-7 text-slate-600">Looker Studio 경영 대시보드 구축, 주간/월간 보고서 자동 생성, 전체 시스템 통합 및 권한 제어</p>
+                <ul class="mt-2 list-disc pl-5 text-sm text-slate-500">
+                  <li>산출물: Looker Studio 대시보드, 보고서 자동화 스케줄, 권한 제어 설정</li>
+                  <li>마일스톤: 전체 시스템 시연 (AppSheet + 대시보드 + AI 서류)</li>
+                </ul>
+              </div>
+              <div class="timeline-item">
+                <p class="text-sm font-semibold tracking-[0.14em] text-sky-700">PHASE 4</p>
+                <h4 class="text-base font-semibold text-slate-900">QA / 배포 / 문서화</h4>
+                <p class="mb-1 text-sm font-semibold text-amber-600">Day 81–90 (10일)</p>
+                <p class="text-sm leading-7 text-slate-600">통합 테스트, 무역/물류팀 실무진 테스트 피드백 반영, 운영 매뉴얼 작성, 최종 오픈</p>
+                <ul class="mt-2 list-disc pl-5 text-sm text-slate-500">
+                  <li>산출물: 통합 테스트 결과서, AppSheet/Looker Studio 관리자 운영 매뉴얼</li>
+                  <li>마일스톤: 최종 오픈 및 인수인계 완료</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h2>마일스톤 체크포인트</h2>
+              <table>
+                <thead>
+                  <tr><th>마일스톤</th><th>시점</th><th>검수 기준</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>M1: ERP 데이터 연동 완료</td><td>Day 30</td><td>이카운트 ERP → BigQuery 실시간 데이터 동기화 정상 동작</td></tr>
+                  <tr><td>M2: AI 서류 + AppSheet 시연</td><td>Day 60</td><td>Invoice/PL AI 자동 생성 데모, AppSheet 입출고 테스트</td></tr>
+                  <tr><td>M3: 전체 시스템 시연</td><td>Day 80</td><td>대시보드 + 보고서 + 앱 + AI 서류 통합 시연</td></tr>
+                  <tr><td>M4: 최종 오픈</td><td>Day 90</td><td>실무진 테스트 완료, 운영 매뉴얼 납품, 인수인계</td></tr>
+                </tbody>
+              </table>
+
+              <h2>커뮤니케이션 계획</h2>
+              <table>
+                <tr><th>항목</th><th>방식</th><th>주기</th></tr>
+                <tr><td>일일 진행 공유</td><td>Slack / 카카오톡</td><td>매일</td></tr>
+                <tr><td>주간 미팅</td><td>Zoom / Google Meet</td><td>주 1회</td></tr>
+                <tr><td>마일스톤 리뷰</td><td>화면 공유 + 문서</td><td>단계 완료 시</td></tr>
+                <tr><td>이슈 트래킹</td><td>GitHub Issues</td><td>상시</td></tr>
+              </table>
+            </article>
+          </div>
+        </div>
+
+        <!-- PAGE: Portfolio -->
+        <div id="page-portfolio" class="page-section space-y-6">
+          <div class="rounded-2xl border border-slate-200/70 bg-white/95 p-5 shadow-soft backdrop-blur md:p-8">
+            <article class="doc-content">
+              <h1>유사 프로젝트 경험</h1>
+              <blockquote>본 프로젝트와 유사한 기능/기술 스택을 활용한 수행 경험을 소개합니다.</blockquote>
+            </article>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">10+</p>
+              <p class="text-xs text-slate-500">완료 프로젝트</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">5+</p>
+              <p class="text-xs text-slate-500">AI/데이터 프로젝트</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">90일</p>
+              <p class="text-xs text-slate-500">제안 기간</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-4 text-center shadow-soft backdrop-blur">
+              <p class="text-2xl font-bold text-sky-700">3,600만</p>
+              <p class="text-xs text-slate-500">제안 금액</p>
+            </div>
+          </div>
+
+          <!-- Portfolio Cards -->
+          <div class="space-y-4">
+            <!-- Series B -->
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft backdrop-blur md:p-8">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">핀테크 / B2B SaaS</div>
+              <h3 class="text-lg font-semibold tracking-tight text-slate-900">Series B — 투자조합 관리 올인원 플랫폼</h3>
+              <p class="mt-1 text-sm text-slate-400">B2B SaaS / 핀테크 · 14개월 · PR 1,652건</p>
+              <div class="mt-3 doc-content">
+                <h4>프로젝트 개요</h4>
+                <p>한국 벤처캐피탈(VC) 업계에서 투자조합 관리, 전자결재, 규제 보고를 단일 시스템으로 통합한 올인원 SaaS 플랫폼입니다. GP, LP, 스타트업의 투자 라이프사이클 전체를 관리합니다.</p>
+                <h4>핵심 기능</h4>
+                <ul>
+                  <li><strong>AI 투자심사보고서 자동 생성</strong> — ChatGPT API 연동, 입력 데이터 기반 보고서 자동 작성</li>
+                  <li>VICS 규제 5종 양식 자동 생성 + SFTP 자동 제출</li>
+                  <li>50+ 페이지, 200-300+ API 엔드포인트, 80+ 데이터 엔티티</li>
+                  <li>실시간 공동 편집(CRDT/Yjs), 전자결재 엔진</li>
+                </ul>
+                <h4>본 프로젝트와의 유사점</h4>
+                <ul>
+                  <li><strong>AI 기반 문서 자동 생성</strong> — 본 프로젝트의 Gemini AI 무역 서류 자동 생성과 동일한 AI 문서 자동화 경험</li>
+                  <li><strong>대규모 데이터 처리 및 대시보드</strong> — 80+ 엔티티 기반 경영 대시보드 구축 경험</li>
+                  <li><strong>외부 API 연동 및 자동화</strong> — VICS SFTP 자동 제출, NICE KYC 등 다수 외부 시스템 연동</li>
+                </ul>
+                <h4>기술 스택</h4>
+                <div class="flex flex-wrap gap-1.5 not-prose">
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Next.js 13</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">NestJS 10</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">MySQL</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">ChatGPT API</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">AWS</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Lexical/Yjs</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- EZ-Approve -->
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft backdrop-blur md:p-8">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">B2B SaaS / 기업용</div>
+              <h3 class="text-lg font-semibold tracking-tight text-slate-900">EZ-Approve — 전자결재 업무 관리 올인원 플랫폼</h3>
+              <p class="mt-1 text-sm text-slate-400">B2B SaaS / 기업용 · 9주 · PR 504건</p>
+              <div class="mt-3 doc-content">
+                <h4>프로젝트 개요</h4>
+                <p>한국 기업의 분산된 결재·문서관리 프로세스를 통합하는 B2B SaaS 플랫폼입니다. 엔터프라이즈급 전자결재, 실시간 공동편집, 다단계 권한 제어를 제공합니다.</p>
+                <h4>핵심 기능</h4>
+                <ul>
+                  <li>8종 결재 행위 지원 (상신/합의/전결/선결/후결/대결)</li>
+                  <li>120-150 API 엔드포인트, 34 엔티티, 7 사용자 역할</li>
+                  <li>Lexical 기반 170파일 리치 에디터 + Yjs 실시간 공동편집</li>
+                  <li>12개 외부 서비스 연동</li>
+                </ul>
+                <h4>본 프로젝트와의 유사점</h4>
+                <ul>
+                  <li><strong>기업 업무 자동화 시스템</strong> — 기업 내부 업무 프로세스를 디지털화하는 B2B 시스템 구축 경험</li>
+                  <li><strong>다수 외부 API 연동</strong> — 12개 외부 서비스 연동 경험으로 이카운트 ERP API 연동 역량 보유</li>
+                  <li><strong>역할 기반 접근 제어</strong> — 7종 사용자 역할 기반 권한 제어 → 부서별/직급별 대시보드 권한 제어 적용 가능</li>
+                </ul>
+                <h4>기술 스택</h4>
+                <div class="flex flex-wrap gap-1.5 not-prose">
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Next.js 13</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">NestJS 10</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">MySQL 8</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Docker</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Firebase FCM</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">CASL RBAC</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Harmony Link -->
+            <div class="rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-soft backdrop-blur md:p-8">
+              <div class="mb-3 inline-flex rounded-full border px-2.5 py-1 text-sm font-semibold tracking-[0.12em] bg-sky-100 text-sky-700 border-sky-200">B2B SaaS / 헬스케어</div>
+              <h3 class="text-lg font-semibold tracking-tight text-slate-900">Harmony Link — 시니어 주간보호 관리 플랫폼</h3>
+              <p class="mt-1 text-sm text-slate-400">B2B SaaS / 헬스케어 · 6개월 · 133K+ LOC</p>
+              <div class="mt-3 doc-content">
+                <h4>프로젝트 개요</h4>
+                <p>노인 주간보호센터의 돌봄 기록, 투약 관리, 보호자 소통, AI 건강분석을 통합한 멀티플랫폼 관리 시스템입니다. 6개 플랫폼(Android, iOS, Web, macOS, Windows, Linux)을 단일 코드베이스로 지원합니다.</p>
+                <h4>핵심 기능</h4>
+                <ul>
+                  <li><strong>AI 건강 데이터 분석</strong> — OpenAI 연동으로 건강 데이터 자동 분석 및 트렌드 파악</li>
+                  <li>140+ API 엔드포인트, 90개 DB 마이그레이션</li>
+                  <li>멀티테넌트 아키텍처, 6개 플랫폼 지원</li>
+                  <li>AWS CDK 기반 인프라 자동화</li>
+                </ul>
+                <h4>본 프로젝트와의 유사점</h4>
+                <ul>
+                  <li><strong>AI 데이터 분석 연동</strong> — OpenAI 기반 데이터 분석 경험 → Gemini AI 연동에 직접 적용 가능</li>
+                  <li><strong>멀티플랫폼 관리 시스템</strong> — 웹 관리자 + 모바일 앱 + 대시보드 통합 구조 → AppSheet + Looker Studio 구조와 유사</li>
+                  <li><strong>클라우드 인프라 자동화</strong> — AWS CDK IaC 경험 → GCP 인프라 구축에 적용 가능</li>
+                </ul>
+                <h4>기술 스택</h4>
+                <div class="flex flex-wrap gap-1.5 not-prose">
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Flutter</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">NestJS</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">Next.js</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">OpenAI API</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">AWS CDK</span>
+                  <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-sm text-slate-500">MySQL</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-sky-200/70 bg-gradient-to-br from-sky-50 to-brand-50 p-6 text-center shadow-soft md:p-10">
+            <h2 class="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">함께 만들어 가겠습니다</h2>
+            <p class="mx-auto mt-3 max-w-lg text-sm leading-7 text-slate-600">프로젝트에 대해 더 자세한 논의를 원하시면 미팅을 신청해 주세요.</p>
+          </div>
+        </div>
+
+        <!-- Bottom Page Navigation -->
+        <div id="page-nav" class="mt-6 flex items-center justify-between gap-4" style="display:none;">
+          <a id="nav-prev" href="#home"
+             class="group flex items-center gap-2 rounded-2xl border border-slate-200/70 bg-white/90 px-5 py-3 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white">
+            <svg class="w-5 h-5 text-slate-400 transition group-hover:text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            <span>
+              <span class="block text-xs text-slate-400">이전</span>
+              <span id="nav-prev-label" class="block text-sm font-semibold text-slate-700 group-hover:text-sky-700">홈</span>
+            </span>
+          </a>
+          <a id="nav-next" href="#overview"
+             class="group flex items-center gap-2 rounded-2xl border border-slate-200/70 bg-white/90 px-5 py-3 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white text-right ml-auto">
+            <span>
+              <span class="block text-xs text-slate-400">다음</span>
+              <span id="nav-next-label" class="block text-sm font-semibold text-slate-700 group-hover:text-sky-700">프로젝트 소개</span>
+            </span>
+            <svg class="w-5 h-5 text-slate-400 transition group-hover:text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+      </main>
+    </div>
+
+    <footer class="mt-10 border-t border-slate-200 pt-6 text-xs text-slate-500">
+      &copy; 2026 &middot; 본 제안서는 이카운트 ERP 연동 GCP 데이터 파이프라인 및 AI 업무 자동화 시스템 구축 프로젝트를 위해 작성되었습니다.
+    </footer>
+  </div>
+
+  <!-- SPA Router -->
+  <script>
+    const pages = ['home', 'overview', 'estimate', 'manday', 'prd', 'timeline', 'portfolio'];
+    const pageLabels = {
+      home: '홈', overview: '프로젝트 소개', estimate: '견적서',
+      manday: '공수계산서', prd: 'PRD', timeline: '일정 제안', portfolio: '유사 프로젝트 경험'
+    };
+
+    function navigate(pageId) {
+      if (!pages.includes(pageId)) pageId = 'home';
+      document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+      const target = document.getElementById('page-' + pageId);
+      if (target) target.classList.add('active');
+      document.querySelectorAll('.nav-link').forEach(link => {
+        if (link.dataset.page === pageId) {
+          link.className = 'nav-link block rounded-xl border px-3 py-2 text-sm border-sky-200 bg-sky-50 font-medium text-sky-700';
+        } else {
+          link.className = 'nav-link block rounded-xl border border-transparent px-3 py-2 text-sm text-slate-600 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900';
+        }
+      });
+      updatePageNav(pageId);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      closeSidebar();
+    }
+
+    function updatePageNav(pageId) {
+      const nav = document.getElementById('page-nav');
+      const idx = pages.indexOf(pageId);
+      const prevBtn = document.getElementById('nav-prev');
+      const nextBtn = document.getElementById('nav-next');
+      const prevLabel = document.getElementById('nav-prev-label');
+      const nextLabel = document.getElementById('nav-next-label');
+      nav.style.display = (pageId === 'home') ? 'none' : 'flex';
+      if (idx > 0) {
+        prevBtn.href = '#' + pages[idx - 1];
+        prevLabel.textContent = pageLabels[pages[idx - 1]];
+        prevBtn.style.visibility = 'visible';
+      } else {
+        prevBtn.style.visibility = 'hidden';
+      }
+      if (idx < pages.length - 1) {
+        nextBtn.href = '#' + pages[idx + 1];
+        nextLabel.textContent = pageLabels[pages[idx + 1]];
+        nextBtn.style.visibility = 'visible';
+      } else {
+        nextBtn.style.visibility = 'hidden';
+      }
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebar-backdrop').classList.remove('open');
+    }
+
+    function handleHash() {
+      const hash = (location.hash || '#home').replace('#', '');
+      navigate(hash);
+    }
+    window.addEventListener('hashchange', handleHash);
+    window.addEventListener('DOMContentLoaded', handleHash);
+
+    document.getElementById('sidebar-toggle').addEventListener('click', function() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebar-backdrop').classList.toggle('open');
+    });
+  </script>
+</body>
+</html>
